@@ -1,0 +1,53 @@
+body {
+    margin: auto;
+    background-color: #bfbdb4;
+}
+
+#game-toplevel {
+    border: 1px solid red;
+}
+
+.frame {
+    border: 1px solid grey;
+    margin: 5px auto;
+    padding: 5px;
+
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.child-spawner {
+}
+
+.stats-item {
+}
+
+.stats-panel {
+}
+
+.shop-item {
+}
+
+.shop-panel {
+}
+
+.game-area {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.clicker-button {
+    background: none;
+    border: none;
+}
+
+.clicker-button:hover {
+    filter: brightness(0.9);
+    cursor: pointer;
+}
+
+.clicker-button > img {
+    width: 200px;
+}

@@ -1,70 +1,223 @@
 const frames = [];
 
-const createShopItems = (frame) => {
-    const shopPanel = frame.shopPanel;
-    const shopItems = frame.shopItems;
+class StatsItem {
+    #html;
+    #name;
+    #valueDisplay;
+    #value;
 
-    shopItems.forEach((item) => {
-        const buyButton = document.createElement("button");
-        const shopItem = document.createElement("div");
-        shopItem.className = "shop-item";
-        shopItem.innerHTML = `
-<div>
-<h3>${item.name}</h3>
-<p>${item.description}</p>
-</div>
-`;
-        buyButton.innerHTML = `Buy ${item.cost}`;
-        buyButton.onclick = () => buyItem(frame, `${item.name}`);
-        shopItem.appendChild(buyButton);
-        shopPanel.appendChild(shopItem);
-    });
-}
+    constructor(name, value) {
+        this.#html = document.createElement("div");
+        this.#html.className = "stats-item"
+        this.#html.innerHTML = `<div><h3>${name}</h3></div>`;
 
-const buyItem = (frame, itemName) => {
-    console.log(frame);
-    let item = frame.shopItems.find((i) => i.name === itemName);
+        this.#name = name;
 
-    if (frame.clickCount >= item.cost) {
-        processClicks(frame, -item.cost);
+        this.#valueDisplay = document.createElement("p");
+        this.value = value;
+        this.#html.append(this.#valueDisplay);
+    }
 
-        const itemInArray = frame.statsItems.find((obj) => obj.name === itemName);
+    get HTMLObj() {
+        return this.#html;
+    }
 
-        itemInArray.amount++;
-        itemInArray.itemBox.textContent = itemInArray.amount;
+    get name() {
+        return this.#name;
+    }
 
-        item.cost *= 2;
+    get value() {
+        return this.#value;
+    }
 
-        itemInArray.itemBox.innerText = item.cost;
+    set value(x) {
+        this.#value = x;
+        this.#valueDisplay.innerText = x;
+    }
+
+    incrementValue(x) {
+        this.value = this.#value + x;
     }
 }
 
-const processClicks = (frame, count) => {
-    const clickNum = frame.statsItems.find((i) => (i.name === "clickNum"));
+class StatsPanel {
+    #html;
+    #list;
+    
+    constructor(shopItems) {
+        this.#html = document.createElement("aside");
+        this.#html.className = "stats-panel";
+        this.#list = new Array();
 
-    clickNum.count += count;
-    clickNum.itemBox.innerText = clickNum.count;
-    frame.clickCount = clickNum.count;
+        const scoreItem = new StatsItem("Number of Clicks", 0);
+
+        this.#list.push(scoreItem);
+        this.#html.appendChild(scoreItem.HTMLObj);
+
+        shopItems.forEach((item) => {
+            const shopItem = new StatsItem(item.name, 0);
+
+            this.#list.push(shopItem);
+            this.#html.appendChild(shopItem.HTMLObj);
+        });
+    }
+
+    get HTMLObj() {
+        return this.#html;
+    }
+
+    getItem(name) {
+        return this.#list.find((i) => i.name === name);
+    }
+
+    getItemValue(name) {
+        return this.getItem(name).value;
+    }
+
+    incrementItemValue(name, value) {
+        this.getItem(name).incrementValue(value);
+    }
 }
 
-const buildFrame = (parentFrame) => {
-    const statsPanel = document.createElement("aside");
-    const gameArea = document.createElement("section");
-    const shopPanel = document.createElement("aside");
-    const button = document.createElement("button");
-    const child = document.createElement("section");
+class GameArea {
+    #html;
+    #button;
+    #child;
+    #hasChild = false;
 
-    parentFrame.appendChild(statsPanel);
-    parentFrame.appendChild(gameArea);
-    parentFrame.appendChild(shopPanel);
+    constructor(buttonCallback) {
+        this.#html = document.createElement("section");
+        this.#html.className = "game-area";
+        
+        this.#child = document.createElement("button");
+        this.#child.className = "child-spawner";
+        this.#child.innerText = "Buy a child!";
+        this.#child.onclick = () => this.createChild();
 
-    const frame = {
-        clickCount: 0,
-        statsItems: [],
-        gameArea: gameArea,
-        shopPanel: shopPanel,
-        child: child,
-        shopItems: [
+        this.#button = document.createElement("button");
+        this.#button.className = "clicker-button";
+        this.#button.innerHTML = "<img src=\"https://cdn.creazilla.com/cliparts/3224900/mouse-clipart-md.png\" />";
+        this.#button.onclick = () => buttonCallback(1);
+
+        this.#html.appendChild(this.#child);
+        this.#html.appendChild(this.#button);
+    }
+
+    createChild() {
+        const childFrame = new Frame();
+        this.#hasChild = true;
+
+        this.#child.remove();
+        this.#child = childFrame;
+
+        frames.push(childFrame);
+        this.#html.insertBefore(childFrame.HTMLObj, this.#button);
+    }
+
+    get hasChild() {
+        return this.#hasChild;
+    }
+
+    get child() {
+        return this.#child;
+    }
+
+    get HTMLObj() {
+        return this.#html;
+    }
+}
+
+class ShopItem {
+    #html;
+    #cost;
+    #costDisplay;
+    #buyButton;
+    #name;
+    
+    constructor(name, description, cost, purchaseCallback) {
+        this.#html = document.createElement("div");
+        this.#html.className = "shop-item"
+        this.#html.innerHTML = `<h3>${name}</h3><p>${description}</p>`;
+
+        this.#name = name;
+
+        this.#cost = cost;
+        this.#costDisplay = document.createElement("p");
+        this.#costDisplay.innerText = this.cost;
+        this.#html.append(this.#costDisplay);
+
+        this.#buyButton = document.createElement("button");
+        this.#buyButton.innerHTML = `Buy: ${cost} clicks`;
+        this.#buyButton.onclick = () => purchaseCallback(name);
+        this.#html.appendChild(this.#buyButton);
+    }
+
+    get HTMLObj() {
+        return this.#html;
+    }
+
+    get name() {
+        return this.#name;
+    }
+
+    get cost() {
+        return this.#cost;
+    }
+
+    set cost(x) {
+        this.#cost = x;
+        this.#costDisplay.innerText = x;
+    }
+}
+
+class ShopPanel {
+    #html;
+    #list;
+
+    constructor(shopItems, purchaseCallback) {
+        this.#html = document.createElement("aside");
+        this.#html.className = "shop-panel"
+
+        this.#list = new Array();
+
+        shopItems.forEach((item) => {
+            const shopItem = new ShopItem(item.name, item.description, item.cost, purchaseCallback);
+            this.#list.push(shopItem);
+            this.#html.appendChild(shopItem.HTMLObj);
+        });
+    }
+
+    get HTMLObj() {
+        return this.#html;
+    }
+
+    getItem(x) {
+        return this.#list.find((i) => i.name === x);
+    }
+
+    getItemCost(name) {
+        return this.getItem(name).cost;
+    }
+
+    incrementItemCost(name, value) {
+        let item = this.getItem(name);
+
+        item.cost = item.cost + value;
+    }
+}
+
+class Frame {
+    #html;
+    #child;
+    #statsPanel;
+    #gameArea;
+    #shopPanel;
+    
+    constructor() {
+        this.#html = document.createElement("section");
+        this.#html.className = "frame";
+
+        const items = [
             {
                 name: "Alibaba Autoclicker",
                 description: "Clicks for you, but not very well...",
@@ -72,69 +225,60 @@ const buildFrame = (parentFrame) => {
             },
             {
                 name: "Strong Finger",
-                description: "Click so hard, you get more clicks per click",
+                description: "Click so hard, you get more clicks per click!",
                 cost: 10,
             },
-        ],
-   };
+        ];
 
-    const score = document.createElement("div");
-    const scoreText = document.createElement("p");
-    score.className = "stats-item";
-    score.innerHTML = `
-<div>
-<h3>Number of clicks</h3>
-</div>`;
-    score.appendChild(scoreText);
-    statsPanel.appendChild(score);
-    frame.statsItems.push({
-        name: "clickNum",
-        count: 0,
-        itemBox: scoreText,
-    });
+        this.#statsPanel = new StatsPanel(items);
+        this.#gameArea = new GameArea((x) => this.processClicks(x));
+        this.#shopPanel = new ShopPanel(items, (x) => this.buyItem(x));
 
-    frame.shopItems.forEach((item) => {
-        const numBox = document.createElement("p");
-        const shopItem = document.createElement("div");
-        shopItem.className = "stats-item";
-        shopItem.innerHTML = `
-<div>
-<h3>${item.name}</h3>
-</div>
-`;
-        shopItem.appendChild(numBox);
-        statsPanel.appendChild(shopItem);
-        frame.statsItems.push({
-            name: item.name,
-            count: 0,
-            itemBox: numBox,
-        });
-        numBox.innerText = "0";
-    });
+        this.#html.appendChild(this.#statsPanel.HTMLObj);
+        this.#html.appendChild(this.#gameArea.HTMLObj);
+        this.#html.appendChild(this.#shopPanel.HTMLObj);
+    }
 
-    button.id = "clicker-button";
-    button.innerHTML = "<img src=\"https://cdn.creazilla.com/cliparts/3224900/mouse-clipart-md.png\" />";
-    button.onclick = () => processClicks(frame, 1);
+    get HTMLObj() {
+        return this.#html;
+    }
 
-    child.className = "frame";
+    buyItem(itemName) {
+        const clicks = this.#statsPanel.getItemValue("Number of Clicks");
+        const cost = this.#shopPanel.getItemCost(itemName);
 
-    gameArea.appendChild(child);
-    gameArea.appendChild(button);
+        if (clicks >= cost) {
+            this.#statsPanel.incrementItemValue(itemName, 1);
+            this.#statsPanel.incrementItemValue("Number of Clicks", -cost);
+            this.#shopPanel.incrementItemCost(itemName, cost);
+        }
+    }
 
-    shopPanel.className = "shop-panel";
-    createShopItems(frame);
+    get clickFactor() {
+        return 2 ** this.#statsPanel.getItemValue("Strong Finger");
+    }
 
-    return frame;
+    get autoClicks() {
+        return this.#statsPanel.getItemValue("Alibaba Autoclicker");
+    }
+    
+    processClicks(count) {
+        const newClicks = count * this.clickFactor;
+        this.#statsPanel.incrementItemValue("Number of Clicks", newClicks);
+
+        if (this.#gameArea.hasChild) {
+            this.#gameArea.child.processClicks(newClicks);
+        }
+    }
 }
 
-frames.push(buildFrame(document.getElementsByClassName("frame")[0]));
+
+frames.push(new Frame(1));
+document.getElementById("game-toplevel").appendChild(frames[0].HTMLObj);
 
 setInterval(() => {
-    let clickRate = 0;
     for (let i = 0; i < frames.length; i++) {
-        clickRate *= frames[i].statsItems.find((i) => i.name === "Strong Finger").count;
-        clickRate += frames[i].statsItems.find((i) => i.name === "Alibaba Autoclicker").count;
-
-        processClicks(frames[i], clickRate);
+        frames[i].processClicks(frames[i].autoClicks);
     }
-});
+}, 1000);
+
