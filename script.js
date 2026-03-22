@@ -6,10 +6,11 @@ class StatsItem {
     #valueDisplay;
     #value;
 
-    constructor(name, value) {
+    constructor(scale, name, value) {
         this.#html = document.createElement("div");
         this.#html.className = "stats-item"
         this.#html.innerHTML = `<div><h3>${name}</h3></div>`;
+        this.#html.style.width = `#{scale * 150}px`;
 
         this.#name = name;
 
@@ -43,19 +44,20 @@ class StatsItem {
 class StatsPanel {
     #html;
     #list;
-    
-    constructor(shopItems) {
+
+    constructor(scale, shopItems) {
         this.#html = document.createElement("aside");
         this.#html.className = "stats-panel";
+        this.#html.style.width = `${scale * 150}px`;
         this.#list = new Array();
 
-        const scoreItem = new StatsItem("Number of Clicks", 0);
+        const scoreItem = new StatsItem(scale, "Number of Clicks", 0);
 
         this.#list.push(scoreItem);
         this.#html.appendChild(scoreItem.HTMLObj);
 
         shopItems.forEach((item) => {
-            const shopItem = new StatsItem(item.name, 0);
+            const shopItem = new StatsItem(scale, item.name, 0);
 
             this.#list.push(shopItem);
             this.#html.appendChild(shopItem.HTMLObj);
@@ -84,27 +86,31 @@ class GameArea {
     #button;
     #child;
     #hasChild = false;
+    #scale;
 
-    constructor(buttonCallback) {
+    constructor(scale, buttonCallback, childCallback) {
         this.#html = document.createElement("section");
         this.#html.className = "game-area";
-        
+        this.#html.style.width = `${scale * 500}px`;
+
         this.#child = document.createElement("button");
         this.#child.className = "child-spawner";
-        this.#child.innerText = "Buy a child!";
-        this.#child.onclick = () => this.createChild();
+        this.#child.innerText = `Click a clicker! (${100 * 1/scale} clicks)`;
+        this.#child.onclick = () => childCallback();
 
         this.#button = document.createElement("button");
         this.#button.className = "clicker-button";
-        this.#button.innerHTML = "<img src=\"https://cdn.creazilla.com/cliparts/3224900/mouse-clipart-md.png\" />";
+        this.#button.innerHTML = `<img src="https://cdn.creazilla.com/cliparts/3224900/mouse-clipart-md.png" style="width: ${scale * 200}px;" />`;
         this.#button.onclick = () => buttonCallback(1);
 
         this.#html.appendChild(this.#child);
         this.#html.appendChild(this.#button);
+
+        this.#scale = scale;
     }
 
     createChild() {
-        const childFrame = new Frame();
+        const childFrame = new Frame(this.#scale / 2);
         this.#hasChild = true;
 
         this.#child.remove();
@@ -133,11 +139,12 @@ class ShopItem {
     #costDisplay;
     #buyButton;
     #name;
-    
-    constructor(name, description, cost, purchaseCallback) {
+
+    constructor(scale, name, description, cost, purchaseCallback) {
         this.#html = document.createElement("div");
         this.#html.className = "shop-item"
         this.#html.innerHTML = `<h3>${name}</h3><p>${description}</p>`;
+        this.#html.style.width = `${scale * 125}px`;
 
         this.#name = name;
 
@@ -148,6 +155,7 @@ class ShopItem {
 
         this.#buyButton = document.createElement("button");
         this.#buyButton.innerHTML = `Buy: ${cost} clicks`;
+        this.#buyButton.className = "buy-button";
         this.#buyButton.onclick = () => purchaseCallback(name);
         this.#html.appendChild(this.#buyButton);
     }
@@ -174,14 +182,15 @@ class ShopPanel {
     #html;
     #list;
 
-    constructor(shopItems, purchaseCallback) {
+    constructor(scale, shopItems, purchaseCallback) {
         this.#html = document.createElement("aside");
         this.#html.className = "shop-panel"
+        this.#html.style.width = `${scale * 150}px`;
 
         this.#list = new Array();
 
         shopItems.forEach((item) => {
-            const shopItem = new ShopItem(item.name, item.description, item.cost, purchaseCallback);
+            const shopItem = new ShopItem(scale, item.name, item.description, item.cost, purchaseCallback);
             this.#list.push(shopItem);
             this.#html.appendChild(shopItem.HTMLObj);
         });
@@ -212,10 +221,13 @@ class Frame {
     #statsPanel;
     #gameArea;
     #shopPanel;
-    
-    constructor() {
+    #scale;
+
+    constructor(scale) {
         this.#html = document.createElement("section");
         this.#html.className = "frame";
+        this.#html.style.width = `${scale * 800}px`;
+        this.#html.style["font-size"] = `${scale * 12}px`;
 
         const items = [
             {
@@ -230,17 +242,30 @@ class Frame {
             },
         ];
 
-        this.#statsPanel = new StatsPanel(items);
-        this.#gameArea = new GameArea((x) => this.processClicks(x));
-        this.#shopPanel = new ShopPanel(items, (x) => this.buyItem(x));
+        this.#statsPanel = new StatsPanel(scale, items);
+        this.#gameArea = new GameArea(scale, (x) => this.processClicks(x), () => this.getChild());
+        this.#shopPanel = new ShopPanel(scale, items, (x) => this.buyItem(x));
 
         this.#html.appendChild(this.#statsPanel.HTMLObj);
         this.#html.appendChild(this.#gameArea.HTMLObj);
         this.#html.appendChild(this.#shopPanel.HTMLObj);
+
+        this.#scale = scale;
     }
 
     get HTMLObj() {
         return this.#html;
+    }
+
+    getChild() {
+        const clicks = this.#statsPanel.getItemValue("Number of Clicks");
+        const cost = 100 * 1/this.#scale; // TODO: Ugly scale hack to determine number of children
+
+        if (clicks >= cost) {
+            this.#gameArea.createChild();
+            this.#statsPanel.incrementItemValue("Number of Clicks", -cost);
+            this.#shopPanel.incrementItemCost(itemName, cost);
+        }
     }
 
     buyItem(itemName) {
@@ -261,7 +286,7 @@ class Frame {
     get autoClicks() {
         return this.#statsPanel.getItemValue("Alibaba Autoclicker");
     }
-    
+
     processClicks(count) {
         const newClicks = count * this.clickFactor;
         this.#statsPanel.incrementItemValue("Number of Clicks", newClicks);
@@ -281,4 +306,3 @@ setInterval(() => {
         frames[i].processClicks(frames[i].autoClicks);
     }
 }, 1000);
-
